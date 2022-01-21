@@ -1,0 +1,23 @@
+#!/usr/bin/perl -w
+
+my $netrc = "$ENV{HOME}/.netrc";
+my $hostname = '';
+
+if (-e $netrc) {
+    undef $/;
+    open(my $rc, $netrc);
+    my $txt = <$rc>;
+    while ($txt =~ /(\S+)\s+(\S+)/g) {
+        my ($var, $value) = ($1, $2);
+        if ($var eq 'machine') {
+            $hostname = $value;
+        }
+        if ($var ne 'machine' && $hostname eq 'github.com') {
+            print "$var=$value\n";
+        }
+    }
+    close $rc;
+} else {
+    print "Couldn't find .netrc file.";
+    exit 1;
+}

@@ -1,0 +1,25 @@
+# things we want to ignore
+.project
+.settings
+.buildpath
+*.out
+._*
+.gitconfig
+.*.sw*
+.vagrant
+.deps
+*.so
+*.a
+*.o
+.vscode/
+.idea
+*~
+*.P
+.DS_Store
+dist/
+coverage.out
+codeclimate.out
+benchmark.out
+.drone-env
+.drone-cache
+.github

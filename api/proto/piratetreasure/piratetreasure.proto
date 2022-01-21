@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package api.proto.piratetreasure;
+
+option go_package = "github.com/netskope/piratetreasure/api/proto/piratetreasure;piratetreasure";
+
+import "google/protobuf/empty.proto";
+
+message HelloResponse { string hello = 1; }
+// example service
+service HelloWorldService {
+  // return "Hello World"
+  rpc SayHello(google.protobuf.Empty) returns (HelloResponse);
+}
+
+// TODO :: add service specific proto definitions for piratetreasure

@@ -1,0 +1,9 @@
+---
+module: "github.com/netskope/piratetreasure"
+totalThreshold: 85
+thresholdType: stmt
+fileThreshold: 80
+
+#### ADDITIONAL FLAGS
+# skip: ["cmd/my_file.go"]
+# individualFileCoverage: ["pkg/mypkg/my_other_file.go:50"]

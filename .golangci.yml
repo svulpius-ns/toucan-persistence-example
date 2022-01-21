@@ -1,0 +1,39 @@
+---
+run:
+  timeout: 5m
+  skip-dirs:
+    - .*api/proto/.*
+    - .*\\.drone-cache.*
+  allow-parallel-runners: true
+
+linters:
+  disable-all: true
+  enable:
+    - revive
+    - gosec
+    - gofmt
+    - dupl
+    - goimports
+    - staticcheck
+    - govet
+    - whitespace
+    - errcheck
+    - unused
+    - gosimple
+    - deadcode
+    - typecheck
+    - structcheck
+    - misspell
+    - lll
+    - unparam
+    - dogsled
+    - gomnd
+    - exportloopref
+    - unconvert
+    - nakedret
+
+linters-settings:
+  gomnd:
+    settings:
+      mnd:
+        excludes: "_mock.go,_test.go"

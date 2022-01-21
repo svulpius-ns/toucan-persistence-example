@@ -1,0 +1,14 @@
+---
+# grpc-gateway service configuration for piratetreasure
+#
+# Note: Any configuration specified in this file will override
+# configuration which is specified in the proto file(s) via
+# annotations
+
+type: google.api.Service
+config_version: 3
+
+http:
+  rules:
+    - selector: api.proto.piratetreasure.HelloWorldService.SayHello
+      get: /v1/hello

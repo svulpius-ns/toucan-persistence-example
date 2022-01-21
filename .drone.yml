@@ -1,0 +1,320 @@
+---
+kind: pipeline
+name: default
+
+global-variables:
+  go_builder: &go_builder artifactory.netskope.io/qe/citools/builder-go:2.6.4-alpine
+  protobuf_builder: &protobuf_builder artifactory.netskope.io/qe/citools/builder-protobuf:2.6.4
+  environment: &default_environment
+    GOOS: linux
+    GOARCH: amd64
+    CGO_ENABLED: 0
+    GOCACHE: /code/.drone-cache/go-build
+    GOPATH: /code/.drone-cache/go
+
+workspace:
+  base: /code
+
+steps:
+  # wait for the docker sandbox to boot
+  - name: wait-for-sandbox
+    image: docker
+    commands:
+      - apk add bash; chmod ug+x scripts/waitForSandbox.sh
+      - ./scripts/waitForSandbox.sh
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
+
+  # setup env needs for drone ci
+  - name: env-setup
+    image: plugins/docker
+    commands:
+      # ensures the persistent cache volume exists
+      - mkdir -p /tmp/drone-cache/github.com/netskope/piratetreasure
+      # ensures the local cache exists
+      - mkdir -p .drone-cache/go-build .drone-cache/go
+      # required for code-climate step to succeed
+      - chmod -R a+rwX /code
+    volumes:
+      - name: host-temp
+        path: /tmp
+
+  - name: yaml-lint
+    image: cytopia/yamllint
+    commands:
+      - "yamllint /code"
+
+  # restores the local cache from the persistent cache
+  - name: restore-cache
+    image: meltwater/drone-cache:v1
+    settings:
+      restore: true
+      backend: filesystem
+      mount:
+        - .drone-cache
+    volumes:
+      - name: cache-store
+        path: /tmp/cache
+    when:
+      instance:
+        - ci-drone.netskope.io
+
+  - name: download-dependencies
+    image: *go_builder
+    pull: if-not-exists
+    environment:
+      <<: *default_environment
+    commands:
+      - make deps-piratetreasure
+
+  - name: lint-check
+    image: golangci/golangci-lint:latest-alpine
+    pull: always
+    environment:
+      <<: *default_environment
+    commands:
+      - apk add make; make lint-piratetreasure
+
+  - name: code-climate
+    image: codeclimate/codeclimate-duplication
+    commands:
+      - cd /usr/src/app/
+      - ./entrypoint >&2 && exec  /usr/src/app/bin/duplication /code >> /code/codeclimate.out
+
+  - name: code-climate-result
+    image: artifactory.netskope.io/phoenix-dev/nscodeclimateparser
+    environment:
+      GIT_TOKEN:
+        from_secret: GIT_TOKEN
+      CODE_CLIMATE_FILE: "/code/codeclimate.out"
+
+  - name: unit-test
+    image: *go_builder
+    pull: if-not-exists
+    environment:
+      <<: *default_environment
+    commands:
+      - make ut-piratetreasure; chown $UID.$GID coverage.out
+
+  - name: functional-test
+    image: *go_builder
+    pull: if-not-exists
+    environment:
+      <<: *default_environment
+    commands:
+      - make ft-piratetreasure
+
+  - name: benchmark-test
+    image: *go_builder
+    pull: if-not-exists
+    environment:
+      <<: *default_environment
+    commands:
+      - make benchtest-piratetreasure
+
+  - name: coverage-report
+    image: *go_builder
+    pull: if-not-exists
+    commands:
+      - make coverage-piratetreasure
+
+  - name: build-protoc-files
+    image: *protobuf_builder
+    pull: if-not-exists
+    environment:
+      <<: *default_environment
+      PROTO_DIR: api/proto/piratetreasure
+
+  - name: build
+    image: *go_builder
+    pull: if-not-exists
+    environment:
+      <<: *default_environment
+    commands:
+      - echo "If this fails for no apparent reason, clear the .drone-cache folder"
+      - export BUILD_HOST=$DRONE_SYSTEM_HOSTNAME
+      - export BUILT_BY=drone
+      - export PROJECT_VERSION=`grep "APP_VERSION :=" Makefile |awk '{print $3}' |sed "s/$/-$${DRONE_BUILD_NUMBER}/"`
+      - make build-piratetreasure; chown -R $UID.$GID dist
+
+  # ensures the generated (by CI) source files are already in the repo
+  # and that they have not been changed by the CI build
+  - name: untouched
+    image: makii42/untouched
+    commands:
+      - untouched
+
+  - name: build-deploy-image
+    image: plugins/docker
+    environment:
+      <<: *default_environment
+    commands:
+      - export IMAGE_PATH=$NS_ARTIFACTORY_HOST/qe/piratetreasure
+      - apk add make; make dist-piratetreasure
+      - docker tag $IMAGE_PATH:latest-build $IMAGE_PATH:build-$DRONE_BUILD_NUMBER
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
+    when:
+      event:
+        - push
+      branch:
+        - master
+
+  - name: publish-deploy-image
+    image: plugins/docker
+    environment:
+      <<: *default_environment
+    commands:
+      - export IMAGE_PATH=$NS_ARTIFACTORY_HOST/qe/piratetreasure
+      - echo $NS_ARTIFACTORY_PASSWORD | docker login -u $NS_ARTIFACTORY_USER --password-stdin $NS_ARTIFACTORY_HOST
+      - docker push $IMAGE_PATH:latest-build
+      - docker push $IMAGE_PATH:build-$DRONE_BUILD_NUMBER
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
+    when:
+      event:
+        - push
+      branch:
+        - master
+      instance:
+        - ci-drone.netskope.io
+
+  - name: build-release-image
+    image: plugins/docker
+    environment:
+      <<: *default_environment
+    commands:
+      - export TAG=${DRONE_TAG##v}
+      - export IMAGE_PATH=$NS_ARTIFACTORY_HOST/qe/piratetreasure
+      - apk add make; make dist-piratetreasure
+      - docker tag $IMAGE_PATH:latest $IMAGE_PATH:$TAG
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
+    when:
+      event:
+        - tag
+
+  - name: publish-release-image
+    image: plugins/docker
+    environment:
+      <<: *default_environment
+    commands:
+      - export TAG=${DRONE_TAG##v}
+      - export IMAGE_PATH=$NS_ARTIFACTORY_HOST/qe/piratetreasure
+      - echo $NS_ARTIFACTORY_PASSWORD | docker login -u $NS_ARTIFACTORY_USER --password-stdin $NS_ARTIFACTORY_HOST
+      - docker push $IMAGE_PATH:$TAG
+      - docker push $IMAGE_PATH:latest
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
+    when:
+      event:
+        - tag
+      instance:
+        - ci-drone.netskope.io
+
+  # Clear the dist folder for python client publishing.
+  # plugins/pypi expects only pypi packages in dist/
+  - name: clear-dist-for-pypi
+    image: alpine
+    commands:
+      - rm -rf dist/*
+    when:
+      ref:
+        include:
+          - refs/tags/**
+          - refs/heads/master
+
+  # Append build number to version
+  - name: prepare-python-client
+    image: alpine
+    commands:
+      - find . -name \setup.cfg -exec sed -i "/version/ s/$/.build-$DRONE_BUILD_NUMBER/" {} \;
+    when:
+      branch:
+        - master
+
+  # Use the tag as the version
+  - name: prepare-python-client-with-tag
+    image: alpine
+    commands:
+      - export TAG=${DRONE_TAG##v}
+      - find . -name \setup.cfg -exec sed -i "s/^version.*/version = $TAG/" {} \;
+    when:
+      event:
+        - tag
+
+  # Build source distribution and push to artifactory
+  - name: publish-python-client
+    image: plugins/pypi
+    settings:
+      username: drone
+      password:
+        from_secret:
+          global_artifactory_password
+      repository: https://artifactory.netskope.io/artifactory/api/pypi/py-lark
+      distributions:
+        - sdist
+    when:
+      ref:
+        include:
+          - refs/tags/**
+          - refs/heads/master
+      instance:
+        include:
+          - ci-drone.netskope.io
+
+  - name: clean-build
+    image: *go_builder
+    environment:
+      <<: *default_environment
+    commands:
+      - make clean-piratetreasure
+    volumes:
+      - name: host-temp
+        path: /tmp
+    when:
+      status:
+        - success
+        - failure
+
+  # writes cache change back to the persistent store
+  - name: rebuild-cache
+    image: meltwater/drone-cache:v1
+    settings:
+      rebuild: true
+      backend: filesystem
+      mount:
+        - .drone-cache
+    volumes:
+      - name: cache-store
+        path: /tmp/cache
+    when:
+      instance:
+        - ci-drone.netskope.io
+
+services:
+  # dockerd in a container, attached to the docker-sandbox
+  - name: docker-sandbox
+    image: artifactory.netskope.io/drone-plugins/docker-dind
+    privileged: true
+    volumes:
+      - name: sandbox-docker-sock
+        path: /var/run
+
+volumes:
+  # ephemeral volume for docker-sandbox
+  - name: sandbox-docker-sock
+    temp: {}
+  # persistent volume for cache
+  - name: cache-store
+    host:
+      path: /tmp/drone-cache/github.com/netskope/piratetreasure
+  # temp path on host
+  - name: host-temp
+    host:
+      path: /tmp
