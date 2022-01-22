@@ -56,8 +56,8 @@ const (
 // TODO :: Add additional handlers as needed. Make sure they are initialized (below)
 // when the service starts.
 type serviceHandlers struct {
-	serviceHealth     toucan_handlers.HealthServiceHandler
-	serviceHelloWorld handlers.HelloWorldServiceHandler
+	serviceHealth   toucan_handlers.HealthServiceHandler
+	serviceTreasure handlers.TreasureServiceHandler
 }
 
 var (
@@ -296,7 +296,7 @@ func serveCmdFunc() func(cmd *cobra.Command, args []string) {
 			server.AddUnaryServerMiddleware(responseUnaryInterceptor(), "response-unary-logger"),
 			server.AddStreamServerMiddleware(responseStreamInterceptor(), "response-stream-logger"),
 			server.RegisterGRPCGWEndpoint(health.RegisterHealthServiceHandlerFromEndpoint),
-			server.RegisterGRPCGWEndpoint(apis.RegisterHelloWorldServiceHandlerFromEndpoint),
+			server.RegisterGRPCGWEndpoint(apis.RegisterTreasureServiceHandlerFromEndpoint),
 		}
 
 		// enable swagger ui / specify the server option based on the cmd flags
@@ -330,14 +330,14 @@ func serveCmdFunc() func(cmd *cobra.Command, args []string) {
 				BuildHost: build.BuildHost,
 				BuildTime: build.BuildTime,
 			}),
-			serviceHelloWorld: handlers.NewHelloWorldServiceHandler(ctx),
+			serviceTreasure: handlers.NewTreasureServiceHandler(ctx),
 		}
 
 		// register the handlers with the gRPC server
 		// TODO :: Replace HelloWorld with your own
 		// TODO :: register each additional handlers
 		health.RegisterHealthServiceServer(s.GRPCServer(), svcHandlers.serviceHealth)
-		apis.RegisterHelloWorldServiceServer(s.GRPCServer(), svcHandlers.serviceHelloWorld)
+		apis.RegisterTreasureServiceServer(s.GRPCServer(), svcHandlers.serviceTreasure)
 		// start the server
 		logger.Info(fmt.Sprintf("%s-done", build.AppName), zap.Error(s.Run()))
 	}

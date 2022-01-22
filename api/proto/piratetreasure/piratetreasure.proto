@@ -4,13 +4,27 @@ package api.proto.piratetreasure;
 
 option go_package = "github.com/netskope/piratetreasure/api/proto/piratetreasure;piratetreasure";
 
-import "google/protobuf/empty.proto";
+//import "google/protobuf/empty.proto";
 
-message HelloResponse { string hello = 1; }
-// example service
-service HelloWorldService {
+message Treasure { 
+  int64 treasure_id = 1; 
+  string type = 2; 
+  string description = 3;}
+
+message ListTreasureResponse {
+  repeated Treasure treasure=1;
+}
+
+message GetTreasureRequest {
+  int64 treasure_id=1;
+}
+message ListTreasureRequest {
+  string type = 1;
+}
+service TreasureService {
   // return "Hello World"
-  rpc SayHello(google.protobuf.Empty) returns (HelloResponse);
+  rpc ListTreasure(ListTreasureRequest) returns (ListTreasureResponse);
+  rpc GetTreasure(GetTreasureRequest) returns (Treasure);  
 }
 
 // TODO :: add service specific proto definitions for piratetreasure

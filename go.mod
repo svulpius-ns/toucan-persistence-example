@@ -7,6 +7,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.2
 	github.com/hokaccha/go-prettyjson v0.0.0-20210113012101-fb4e108d2519
 	github.com/jedib0t/go-pretty/v6 v6.2.4
+	github.com/mattn/go-sqlite3 v1.14.10
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/netskope-qe/toucan-base v1.4.0
 	github.com/netskope/go-kestrel v0.20.0

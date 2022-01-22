@@ -9,16 +9,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	empty "google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/netskope/go-kestrel/pkg/test"
+	apis "github.com/netskope/piratetreasure/api/proto/piratetreasure"
 )
 
 func TestNewHelloWorldServiceHandler(t *testing.T) {
 	test.InitKestrelForTest()
 
 	sctx := context.Background()
-	h := NewHelloWorldServiceHandler(sctx)
+	h := NewTreasureServiceHandler(sctx)
 	assert.NotNil(t, h)
 }
 
@@ -27,9 +27,9 @@ func TestSayHello(t *testing.T) {
 
 	sctx := context.Background()
 	rctx := context.Background()
-	hw := NewHelloWorldServiceHandler(sctx)
-	helloResponse, err := hw.SayHello(rctx, &empty.Empty{})
+	hw := NewTreasureServiceHandler(sctx)
+	helloResponse, err := hw.ListTreasure(rctx, &apis.ListTreasureRequest{})
 	assert.Nil(t, err)
 	assert.NotEmpty(t, helloResponse)
-	assert.Equal(t, "Hello World!", helloResponse.GetHello())
+	assert.Equal(t, "Hello World!", helloResponse.Treasure)
 }

@@ -1,0 +1,140 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "api/proto/piratetreasure/piratetreasure.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "TreasureService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/treasure": {
+      "get": {
+        "summary": "return \"Hello World\"",
+        "operationId": "TreasureService_ListTreasure",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/piratetreasureListTreasureResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "TreasureService"
+        ]
+      }
+    },
+    "/v1/treasure/{treasureId}": {
+      "get": {
+        "operationId": "TreasureService_GetTreasure",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/piratetreasureTreasure"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "treasureId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "int64"
+          }
+        ],
+        "tags": [
+          "TreasureService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "piratetreasureListTreasureResponse": {
+      "type": "object",
+      "properties": {
+        "treasure": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/piratetreasureTreasure"
+          }
+        }
+      }
+    },
+    "piratetreasureTreasure": {
+      "type": "object",
+      "properties": {
+        "treasureId": {
+          "type": "string",
+          "format": "int64"
+        },
+        "type": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}
